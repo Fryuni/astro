@@ -29,7 +29,7 @@ export function enhanceViteSSRError({
 	if (loader) {
 		try {
 			loader.fixStacktrace(safeError as Error);
-		} catch {}
+		} catch { }
 	}
 
 	if (filePath) {
@@ -152,11 +152,11 @@ export async function getViteErrorPayload(err: ErrorWithMetadata): Promise<Astro
 	}
 	const highlightedCode = err.fullCode
 		? await codeToHtml(err.fullCode, {
-				// @ts-expect-error always assume that shiki can accept the lang string
-				lang: highlighterLang,
-				theme: cssVariablesTheme(),
-				lineOptions: err.loc?.line ? [{ line: err.loc.line, classes: ['error-line'] }] : undefined,
-			})
+			// @ts-expect-error always assume that shiki can accept the lang string
+			lang: highlighterLang,
+			theme: cssVariablesTheme(),
+			lineOptions: err.loc?.line ? [{ line: err.loc.line, classes: ['error-line'] }] : undefined,
+		})
 		: undefined;
 
 	return {

@@ -30,19 +30,19 @@ export type LateSeedFiles = {
 
 type VitePluginDBParams =
 	| {
-			connectToStudio: false;
-			tables: LateTables;
-			seedFiles: LateSeedFiles;
-			srcDir: URL;
-			root: URL;
-	  }
+		connectToStudio: false;
+		tables: LateTables;
+		seedFiles: LateSeedFiles;
+		srcDir: URL;
+		root: URL;
+	}
 	| {
-			connectToStudio: true;
-			tables: LateTables;
-			appToken: string;
-			srcDir: URL;
-			root: URL;
-	  };
+		connectToStudio: true;
+		tables: LateTables;
+		appToken: string;
+		srcDir: URL;
+		root: URL;
+	};
 
 export function vitePluginDb(params: VitePluginDBParams): VitePlugin {
 	const srcDirPath = normalizePath(fileURLToPath(params.srcDir));
@@ -129,14 +129,13 @@ ${shouldSeed ? `import { seedLocal } from ${RUNTIME_IMPORT};` : ''}
 const dbUrl = ${JSON.stringify(dbUrl)};
 export const db = createLocalDatabaseClient({ dbUrl });
 
-${
-	shouldSeed
-		? `await seedLocal({
+${shouldSeed
+			? `await seedLocal({
 	userSeedGlob: import.meta.glob(${JSON.stringify(userSeedFilePaths)}, { eager: true }),
 	integrationSeedImports: [${integrationSeedImports.join(',')}],
 });`
-		: ''
-}
+			: ''
+		}
 
 export * from ${RUNTIME_CONFIG_IMPORT};
 

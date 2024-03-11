@@ -3,7 +3,7 @@ import { SQLiteAsyncDialect } from 'drizzle-orm/sqlite-core';
 import * as color from 'kleur/colors';
 import { customAlphabet } from 'nanoid';
 import stripAnsi from 'strip-ansi';
-import { hasPrimaryKey } from '../../runtime/index.js';
+import { createRemoteDatabaseClient, hasPrimaryKey, sql } from '../../runtime/index.js';
 import {
 	getCreateIndexQueries,
 	getCreateTableQuery,
@@ -419,12 +419,26 @@ function hasRuntimeDefault(column: DBColumn): column is DBColumnWithDefault {
 	return !!(column.schema.default && isSerializedSQL(column.schema.default));
 }
 
-export async function getProductionCurrentSnapshot({
+export function getProductionCurrentSnapshot({
 	appToken,
 }: {
 	appToken: string;
 }): Promise<DBSnapshot> {
-	const url = new URL('/db/schema', getRemoteDatabaseUrl());
+	const remoteDbURL = getRemoteDatabaseUrl();
+
+	return ['http:', 'https'].includes(new URL(remoteDbURL).protocol)
+		? getCurrentSnapshotFromStudio(appToken, remoteDbURL)
+		: {} as any;
+}
+
+async function getCurrentSnapshotFromDB(appToken: string, remoteDbURL: string): Promise<DBSnapshot> {
+	const client = createRemoteDatabaseClient(appToken, remoteDbURL);
+
+	client.run(sql``);
+}
+
+async function getCurrentSnapshotFromStudio(appToken: string, remoteDbURL: string): Promise<DBSnapshot> {
+	const url = new URL('/db/schema', remoteDbURL);
 
 	const response = await fetch(url, {
 		method: 'POST',

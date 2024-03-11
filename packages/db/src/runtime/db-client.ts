@@ -24,6 +24,34 @@ const remoteResultSchema = z.object({
 });
 
 export function createRemoteDatabaseClient(appToken: string, remoteDbURL: string) {
+	const baseURL = new URL(remoteDbURL);
+
+	return baseURL.protocol === 'http:' || baseURL.protocol === 'https:'
+		? createClientForAstroStudio(appToken, baseURL)
+		: createRemoteLibsqlClient(appToken, baseURL);
+}
+
+function createRemoteLibsqlClient(appToken: string, remoteDbURL: URL) {
+	const enableLocalSync = remoteDbURL.searchParams.get('enableLocalSync') === 'true';
+	remoteDbURL.searchParams.delete('enableLocalSync');
+
+	const client = createClient(
+		enableLocalSync
+			? {
+				url: ':memory:',
+				syncUrl: remoteDbURL.toString(),
+				authToken: appToken,
+			}
+			: {
+				url: remoteDbURL.toString(),
+				authToken: appToken,
+			}
+	);
+
+	return drizzleLibsql(client);
+}
+
+function createClientForAstroStudio(appToken: string, remoteDbURL: URL) {
 	const url = new URL('/db/query', remoteDbURL);
 
 	const db = drizzleProxy(
@@ -49,8 +77,7 @@ export function createRemoteDatabaseClient(appToken: string, remoteDbURL: string
 				remoteResult = remoteResultSchema.parse(json);
 			} catch (e) {
 				throw new Error(
-					`Failed to execute query.\nQuery: ${sql}\nFull error: Unexpected JSON response. ${
-						e instanceof Error ? e.message : String(e)
+					`Failed to execute query.\nQuery: ${sql}\nFull error: Unexpected JSON response. ${e instanceof Error ? e.message : String(e)
 					}`
 				);
 			}
@@ -94,8 +121,7 @@ export function createRemoteDatabaseClient(appToken: string, remoteDbURL: string
 				remoteResults = z.array(remoteResultSchema).parse(json);
 			} catch (e) {
 				throw new Error(
-					`Failed to execute batch queries.\nFull error: Unexpected JSON response. ${
-						e instanceof Error ? e.message : String(e)
+					`Failed to execute batch queries.\nFull error: Unexpected JSON response. ${e instanceof Error ? e.message : String(e)
 					}`
 				);
 			}
