@@ -55,11 +55,46 @@ function isStatusCodePage(pathname: string): boolean {
 	return STATUS_CODE_PAGES.has(end);
 }
 
-const createPlugin = (options?: SitemapOptions): AstroIntegration => {
+/**
+ * Version marker is a unique symbol, generated without `Symbol.for`, to ensure that it compares
+ * to the same valy only if using the exact same instance of the configured plugin.
+ *
+ * If two versions of the integration get installed and an integration imports a different version
+ * than the project, we'll find an integration with a matching name but not a matching symbol.
+ */
+const versionMarker: unique symbol = Symbol('@astrojs/sitemap');
+
+interface SitemapApi {
+	addPage(page: string): void;
+	addFilter(filter: (page: string) => boolean | undefined | null): void;
+}
+
+interface SitemapIntegration extends AstroIntegration {
+	name: '@astrojs/sitemap';
+
+	versionMarker: typeof versionMarker;
+
+	api: SitemapApi;
+}
+
+const createPlugin = (options?: SitemapOptions): SitemapIntegration => {
+	const extraPages: string[] = options?.customPages ?? [];
+	const filters: Array<Parameters<SitemapApi['addFilter']>[0]> = [];
+
 	let config: AstroConfig;
 
 	return {
 		name: PKG_NAME,
+		versionMarker,
+
+		api: {
+			addPage(page) {
+				extraPages.push(page);
+			},
+			addFilter(filter) {
+				filters.push(filter);
+			},
+		},
 
 		hooks: {
 			'astro:config:done': async ({ config: cfg }) => {
@@ -77,7 +112,7 @@ const createPlugin = (options?: SitemapOptions): AstroIntegration => {
 
 					const opts = validateOptions(config.site, options);
 
-					const { filter, customPages, serialize, entryLimit } = opts;
+					const { filter, serialize, entryLimit } = opts;
 
 					let finalSiteUrl: URL;
 					if (config.site) {
@@ -129,11 +164,20 @@ const createPlugin = (options?: SitemapOptions): AstroIntegration => {
 						return urls;
 					}, []);
 
-					pageUrls = Array.from(new Set([...pageUrls, ...routeUrls, ...(customPages ?? [])]));
+					pageUrls = Array.from(new Set([...pageUrls, ...routeUrls, ...extraPages]));
 
 					try {
 						if (filter) {
-							pageUrls = pageUrls.filter(filter);
+							pageUrls = pageUrls.filter((page) => {
+								for (const f of filters) {
+									const decision = f(page);
+									if (typeof decision === 'boolean') {
+										return decision;
+									}
+								}
+
+								return filter(page);
+							});
 						}
 					} catch (err) {
 						logger.error(`Error filtering pages\n${(err as any).toString()}`);
@@ -186,6 +230,24 @@ const createPlugin = (options?: SitemapOptions): AstroIntegration => {
 			},
 		},
 	};
+};
+
+function isIntegration(integration: AstroIntegration): integration is SitemapIntegration {
+	return integration.name === PKG_NAME;
+}
+
+export const getApi = (config: AstroConfig): SitemapApi | null => {
+	for (const integration of config.integrations) {
+		if (!isIntegration(integration)) continue;
+
+		if (integration.versionMarker !== versionMarker) {
+			throw new Error('Multiple versions of the `@astrojs/sitemap` integration are installed.');
+		}
+
+		return integration.api;
+	}
+
+	return null;
 };
 
 export default createPlugin;
