@@ -315,6 +315,10 @@ importers:
         version: link:../../packages/astro
 
   examples/integration:
+    dependencies:
+      '@astrojs/sitemap':
+        specifier: ^3.1.2
+        version: link:../../packages/integrations/sitemap
     devDependencies:
       astro:
         specifier: ^4.5.16
