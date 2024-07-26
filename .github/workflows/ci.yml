@@ -49,4 +49,8 @@ jobs:
         run: pnpm run build
 
       - name: Publish previews
-        run: pnpm dlx pkg-pr-new publish packages/db
+        working-directory: packages/db
+        run: |
+          pnpm pack
+          tar -xzf astrojs*.tgz
+          pnpm dlx pkg-pr-new publish package
