@@ -46,7 +46,7 @@ jobs:
         run: pnpm install
 
       - name: Build Packages
-        run: pnpm run build
+        run: pnpm turbo build --filter '@astrojs/db'
 
       - name: Publish previews
         working-directory: packages/db
